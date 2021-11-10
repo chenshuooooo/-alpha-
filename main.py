@@ -1,35 +1,164 @@
-# -*- coding:utf-8 -*-
-import urllib.request
-from bs4 import BeautifulSoup
-from bs4 import UnicodeDammit
-import sys
-import io
-from urllib.parse import quote
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='gb18030')  # æ”¹å˜æ ‡å‡†è¾“å‡ºçš„é»˜è®¤ç¼–ç 
-file_medicine = open('5.txt',mode='w',encoding='utf-8')
-medicine_list=['å¤´å­¢','æ¿è“æ ¹','æ„Ÿå†’çµ']#è¦çˆ¬å–çš„è¯ç‰©åç§°åºåˆ—,æ ¹æ®éœ€æ±‚æ·»åŠ 
-cot = len(medicine_list)
-i=0
-count=1
-while i<cot:
-    name=quote(medicine_list[i])#å°†ä¸­æ–‡è§£æä¸ºURLç¼–ç æ–¹å¼
-    n=0
-    i=i+1
-    while n <= 10:#10ä¸ºè¦çˆ¬å–çš„é¡µæ•°ï¼Œå¦‚æœè¦å…¨çˆ¬ï¼Œå¯ä»¥è®¾ç½®æ¯”è¯¥è¯ç‰©é¡µæ•°å¤§ä¸€ç‚¹
-        n = n + 1
-        url = "http://www.china-yao.com/?act=search&typeid=1&keyword=" + name + "&page=" + str(n)
-        req = urllib.request.Request(url=url)
-        data = urllib.request.urlopen(req)
-        data = data.read()
-        dammit = UnicodeDammit(data, ["utf-8", 'gbk'])
-        data = dammit.unicode_markup
-        soup = BeautifulSoup(data, 'lxml')
-        tags = soup.select('tr td')
-        for tag in tags:
-            if count % 6 != 0:
-                file_medicine.write(tag.text + ',')
-            if count % 6 == 0:
-                file_medicine.write(tag.text + '\n')
-            count += 1
-    print(count)
-    #print(type(soup))
+#»ù±¾°üµ¼Èë
+import numpy as np
+import time
+import tensorflow as tf
+import matplotlib.pyplot as plt
+
+#ÊµÊ±Êı¾İÔöÇ¿¹¦ÄÜ
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+#µ÷ÓÃÏÔ¿¨ÄÚ´æ·ÖÅäÖ¸ÁîĞèÒªµÄ°ü
+from tensorflow.compat.v1 import ConfigProto
+from tensorflow.compat.v1 import InteractiveSession
+#ÏÔ¿¨ÄÚ´æ·ÖÅäÖ¸Áî£º°´Ğè·ÖÅä
+config = ConfigProto()
+config.gpu_options.allow_growth = True
+session = InteractiveSession(config=config)
+#Êı¾İÌáÈ¡
+(x_img_train,y_label_train), (x_img_test, y_label_test)=tf.keras.datasets.cifar100.load_data()
+#z-score±ê×¼»¯
+mean = np.mean(x_img_train, axis=(0, 1, 2, 3))#ËÄ¸öÎ¬¶È ÅúÊı ÏñËØxÏñËØ Í¨µÀÊı
+std = np.std(x_img_train, axis=(0, 1, 2, 3))
+
+x_img_train = (x_img_train - mean) / (std + 1e-7)#trick ¼ÓĞ¡Êıµã ±ÜÃâ³öÏÖÕûÊı
+x_img_test = (x_img_test - mean) / (std + 1e-7)
+
+#one-hot¶ÀÈÈÓ³Éä
+y_label_train = tf.keras.utils.to_categorical(y_label_train, 100)
+y_label_test = tf.keras.utils.to_categorical(y_label_test, 100)
+model = tf.keras.Sequential()
+
+#conv1
+model.add(tf.keras.layers.Conv2D(filters=64, kernel_size=[3, 3], input_shape=(32, 32, 3), strides=1,activation='relu',
+                                        padding='SAME', kernel_regularizer=tf.keras.regularizers.l2(0.0005)))
+model.add(tf.keras.layers.BatchNormalization()) #Åú±ê×¼»¯
+model.add(tf.keras.layers.Dropout(0.3)) #Ëæ»ú¶ªÆúÉñ¾­Ôª£¬·ÀÖ¹¹ıÄâºÏ
+#conv2
+model.add(tf.keras.layers.Conv2D(filters=64, kernel_size=[3, 3], strides=1,activation='relu',
+                                        padding='SAME', kernel_regularizer=tf.keras.regularizers.l2(0.0005)))
+model.add(tf.keras.layers.BatchNormalization())
+#×î´ó³Ø»¯1
+model.add(tf.keras.layers.MaxPooling2D(pool_size=(2, 2)))
+
+
+#conv3
+model.add(tf.keras.layers.Conv2D(filters=128, kernel_size=[3, 3], strides=1,activation='relu',
+                                        padding='SAME', kernel_regularizer=tf.keras.regularizers.l2(0.0005)))
+model.add(tf.keras.layers.BatchNormalization())
+model.add(tf.keras.layers.Dropout(0.4))
+#conv4
+model.add(tf.keras.layers.Conv2D(filters=128, kernel_size=[3, 3], strides=1,activation='relu',
+                                        padding='SAME', kernel_regularizer=tf.keras.regularizers.l2(0.0005)))
+model.add(tf.keras.layers.BatchNormalization())
+#×î´ó³Ø»¯2
+model.add(tf.keras.layers.MaxPooling2D(pool_size=(2, 2)))
+
+
+
+#conv5
+model.add(tf.keras.layers.Conv2D(filters=256, kernel_size=[3, 3], strides=1,activation='relu',
+                                        padding='SAME', kernel_regularizer=tf.keras.regularizers.l2(0.0005)))
+model.add(tf.keras.layers.BatchNormalization())
+model.add(tf.keras.layers.Dropout(0.4))
+#conv6
+model.add(tf.keras.layers.Conv2D(filters=256, kernel_size=[3, 3], strides=1,activation='relu',
+                                        padding='SAME', kernel_regularizer=tf.keras.regularizers.l2(0.0005)))
+model.add(tf.keras.layers.BatchNormalization())
+model.add(tf.keras.layers.Dropout(0.4))
+#conv7
+model.add(tf.keras.layers.Conv2D(filters=256, kernel_size=[3, 3], strides=1,activation='relu',
+                                        padding='SAME', kernel_regularizer=tf.keras.regularizers.l2(0.0005)))
+model.add(tf.keras.layers.BatchNormalization())
+#×î´ó³Ø»¯3
+model.add(tf.keras.layers.MaxPooling2D(pool_size=(2, 2)))
+
+
+#conv8
+model.add(tf.keras.layers.Conv2D(filters=512, kernel_size=[3, 3], strides=1,activation='relu',
+                                        padding='SAME', kernel_regularizer=tf.keras.regularizers.l2(0.0005)))
+model.add(tf.keras.layers.BatchNormalization())
+model.add(tf.keras.layers.Dropout(0.4))
+#conv9
+model.add(tf.keras.layers.Conv2D(filters=512, kernel_size=[3, 3], strides=1,activation='relu',
+                                        padding='SAME', kernel_regularizer=tf.keras.regularizers.l2(0.0005)))
+model.add(tf.keras.layers.BatchNormalization())
+model.add(tf.keras.layers.Dropout(0.4))
+#conv10
+model.add(tf.keras.layers.Conv2D(filters=512, kernel_size=[3, 3], strides=1,activation='relu',
+                                        padding='SAME', kernel_regularizer=tf.keras.regularizers.l2(0.0005)))
+model.add(tf.keras.layers.BatchNormalization())
+#×î´ó³Ø»¯4
+model.add(tf.keras.layers.MaxPooling2D(pool_size=(2, 2)))
+
+
+#conv11
+model.add(tf.keras.layers.Conv2D(filters=512, kernel_size=[3, 3], strides=1,activation='relu',
+                                        padding='SAME', kernel_regularizer=tf.keras.regularizers.l2(0.0005)))
+model.add(tf.keras.layers.BatchNormalization())
+model.add(tf.keras.layers.Dropout(0.4))
+#conv12
+model.add(tf.keras.layers.Conv2D(filters=512, kernel_size=[3, 3], strides=1,activation='relu',
+                                        padding='SAME', kernel_regularizer=tf.keras.regularizers.l2(0.0005)))
+model.add(tf.keras.layers.BatchNormalization())
+model.add(tf.keras.layers.Dropout(0.4))
+#conv13
+model.add(tf.keras.layers.Conv2D(filters=512, kernel_size=[3, 3], strides=1,activation='relu',
+                                        padding='SAME', kernel_regularizer=tf.keras.regularizers.l2(0.0005)))
+model.add(tf.keras.layers.BatchNormalization())
+#×î´ó³Ø»¯5
+model.add(tf.keras.layers.MaxPooling2D(pool_size=(2, 2)))
+
+#È«Á¬½Ó MLPÈı²ã
+model.add(tf.keras.layers.Flatten())
+model.add(tf.keras.layers.Dropout(rate=0.5))
+
+
+model.add(tf.keras.layers.Dense(units=512,activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.0005)))
+model.add(tf.keras.layers.BatchNormalization())
+model.add(tf.keras.layers.Dense(units=100))
+model.add(tf.keras.layers.Activation('softmax'))
+#²é¿´ÕªÒª
+model.summary()
+#³¬²ÎÊı
+training_epochs = 60
+batch_size = 128
+learning_rate = 0.1
+momentum = 0.9 #SGD¼ÓËÙ¶¯Á¿
+lr_decay = 1e-6 #Ñ§Ï°Ë¥¼õ
+lr_drop = 20 #Ë¥¼õ±¶Êı
+
+tf.random.set_seed(777)#¿É¸´ÏÖ
+def lr_scheduler(epoch):
+    return learning_rate * (0.5 ** (epoch // lr_drop))
+
+reduce_lr = tf.keras.callbacks.LearningRateScheduler(lr_scheduler)
+datagen = ImageDataGenerator(
+    featurewise_center=False,  # ²¼¶ûÖµ¡£½«ÊäÈëÊı¾İµÄ¾ùÖµÉèÖÃÎª 0£¬ÖğÌØÕ÷½øĞĞ¡£
+    samplewise_center=False,  # ²¼¶ûÖµ¡£½«Ã¿¸öÑù±¾µÄ¾ùÖµÉèÖÃÎª 0¡£
+    featurewise_std_normalization=False,  # ²¼¶ûÖµ¡£½«ÊäÈë³ıÒÔÊı¾İ±ê×¼²î£¬ÖğÌØÕ÷½øĞĞ¡£
+    samplewise_std_normalization=False,  # ²¼¶ûÖµ¡£½«Ã¿¸öÊäÈë³ıÒÔÆä±ê×¼²î¡£
+    zca_whitening=False,  # ²¼¶ûÖµ¡£ÊÇ·ñÓ¦ÓÃ ZCA °×»¯¡£
+    #zca_epsilon  ZCA °×»¯µÄ epsilon Öµ£¬Ä¬ÈÏÎª 1e-6¡£
+    rotation_range=15,  # ÕûÊı¡£Ëæ»úĞı×ªµÄ¶ÈÊı·¶Î§ (degrees, 0 to 180)
+    width_shift_range=0.1,  # randomly shift images horizontally (fraction of total width)
+    height_shift_range=0.1,  # randomly shift images vertically (fraction of total height)
+    horizontal_flip=True,  # ²¼¶ûÖµ¡£Ëæ»úË®Æ½·­×ª¡£
+    vertical_flip=False)  # ²¼¶ûÖµ¡£Ëæ»ú´¹Ö±·­×ª¡£
+
+datagen.fit(x_img_train)
+#ÅäÖÃÓÅ»¯Æ÷
+optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate,
+                                    decay=1e-6, momentum=momentum, nesterov=True)
+#½»»»ìØ¡¢×Ô¶¨ÒåÓÅ»¯Æ÷£¬ÆÀ¼Û±ê×¼¡£
+model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+
+
+t1=time.time()
+model.fit(datagen.flow(x_img_train, y_label_train,
+                                 batch_size=batch_size), epochs=training_epochs, verbose=2, callbacks=[reduce_lr],
+                    steps_per_epoch=x_img_train.shape[0] // batch_size, validation_data=(x_img_test, y_label_test))
+t2=time.time()
+CNNfit = float(t2-t1)
+print("Time taken: {} seconds".format(CNNfit))
+scores = model.evaluate(x_img_test,
+                        y_label_test, verbose=0)
+scores[1]
